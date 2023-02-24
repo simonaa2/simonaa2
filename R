@@ -1,0 +1,77 @@
+library(psych)
+library("readxl")
+library(ggplot2)
+library(psych)
+library(MBESS)
+library(ggcorrplot)
+```
+
+
+
+FILEPATH='~/Downloads/School Survey(1-14).xls'
+SS <- read_excel(FILEPATH)
+names(SS) <- c( "ID", "Start_time","Completion_time","Email","Name",
+               "Year_Level","Email_2","Postal_Code","Accessibility",
+               "Achievement_Results","Teaching_Experience","Teacher_Friendly", 
+               "Facilities_Maintanance","Teacher_Additional", "Student_Behaviour", 
+               "Facilities","Personal_Effort","Parental_Influence",
+               "Other_Engagement", "Peer_friend","School_Experience","Recommendation"
+               )
+
+SS2 = subset(SS, 
+             select = -c(ID, Name, Email, Postal_Code, Year_Level,Email_2, Start_time, Completion_time))
+
+SS2.1 = subset(SS, select = -c(Start_time, Completion_time, Email, Name) ) 
+summary(SS2.1)
+
+SS2$School_Experience=as.numeric(SS2$School_Experience) 
+SS2$Recommendation=as.numeric(SS2$Recommendation)
+cormatrix <- cor(SS2)
+ggcorrplot(cormatrix)
+KMO(cormatrix)
+
+
+parallel <- fa.parallel(cormatrix, fm = 'minres', fa = 'fa')
+
+nfac <- fa(SS2, nfactors = 5, rotate = "varimax",fm="minres") 
+nfac
+
+print(nfac$loadings, cutoff = 0.4) 
+
+SS3 = subset(SS2, select = -c(Teaching_Experience, Teacher_Additional, Peer_friend, Student_Behaviour, Teacher_Friendly) ) 
+
+nfac <- fa(SS3, nfactors = 5, rotate = "varimax",fm="minres") 
+nfac
+
+print(nfac$loadings, cutoff = 0.4) 
+
+
+
+MRw=nfac$weights 
+MR1w=nfac$weights[,1] 
+MR2w=nfac$weights[,2] 
+MR3w=nfac$weights[,3] 
+MR4w=nfac$weights[,4]
+MR5w=nfac$weights[,5]
+
+
+dim(SS3) 
+dim(MRw) 
+
+SS4= data.matrix(SS3) %*% data.matrix(MRw) 
+dim(SS4) 
+SS5=as.data.frame(SS4) 
+SS5$Satis=SS$Recommendation
+
+
+
+
+reg <- lm( SS5$Satis ~ SS5$MR1 + SS5$MR2 + SS5$MR3 + SS5$MR4 + SS5$MR5, data = SS5) 
+
+coefficients <- as.data.frame(reg$coefficients) 
+colnames(coefficients) <- 'coefficients' 
+
+summary(reg)
+plot(reg)
+print(reg)
+
